@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<meta name="theme-color" content="#7A5535"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="GP Foto"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<title>Giovana Petronilho Fotografia</title>
+<link rel="apple-touch-icon" href="icons/icon-192.png"/>
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='40' fill='%237A5535'/><circle cx='90' cy='95' r='28' stroke='white' stroke-width='4' fill='none'/><rect x='54' y='68' width='72' height='54' rx='6' stroke='white' stroke-width='4' fill='none'/><rect x='78' y='58' width='24' height='14' rx='4' fill='white'/></svg>"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body,#root{height:100%;width:100%;overflow:hidden}
+body{background:#FAF7F4;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased;overscroll-behavior:none}
+input,select,textarea,button{font-family:inherit}
+::-webkit-scrollbar{display:none}
+button,a{touch-action:manipulation}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<script type="text/babel">
+const { useState, useMemo, useEffect, useCallback } = React;
+
+/* ── PALETTE ── */
+const C = {
+  bronze:"#A67C52",bronzeDark:"#7A5535",bronzeLight:"#C4A882",bronzeXL:"#E8D9C8",
+  cream:"#FAF7F4",beige:"#F0E9E1",beigeM:"#DDD0C0",
+  text:"#2E1D0E",textMid:"#8A6E58",textLight:"#B8A090",
+  white:"#FFFFFF",success:"#5E9E6A",warning:"#C4923A",danger:"#B55B5B",info:"#5B7FA6",
+  overlay:"rgba(25,12,4,.55)",purple:"#9E6BA0",
+};
+
+/* ── CONSTANTS ── */
+const SESSION_TYPES = ["Casamento","Estúdio","Aniversário","Pré-Wedding","Externo","Newborn","Debutante","Gestante","Família","Corporativo"];
+const WEDDING_SERVICES = ["Cerimônia","Recepção","Making Off","Álbum","Pré-Wedding","Festa","Ensaio de Casal","Trash the Dress"];
+const COST_CATS = ["Deslocamento","Cenário/Montagem","Assistente","Aluguel de Espaço","Figurino","Maquiagem","Equipamento","Alimentação","Outro"];
+const PAYMENT_MODES = [{value:"pacote",label:"Pacote Fechado"},{value:"por_foto",label:"Por Foto"}];
+const MONTHS_PT = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+const TYPE_COLORS = {
+  "Casamento":"#7A5535","Pré-Wedding":"#9E6BA0","Estúdio":"#A67C52",
+  "Aniversário":"#C4923A","Externo":"#5B7FA6","Newborn":"#5E9E6A",
+  "Debutante":"#B07AB0","Gestante":"#5B8FA0","Família":"#C4923A","Corporativo":"#5B8FA0",
+};
+const AGENDA_TC = {
+  "Casamento":"#7A5535","Newborn":"#5E9E6A","Debutante":"#9E6BA0","Gestante":"#5B7FA6",
+  "Família":"#C4923A","Reunião":"#8A6E58","Entrega":"#A67C52","Ensaio":"#C4A882",
+};
+
+/* ── STORAGE ── */
+const SK_C = 'gp_clients_v3', SK_A = 'gp_agenda_v3';
+const load = (k,fb) => { try { const r=localStorage.getItem(k); return r?JSON.parse(r):fb; } catch(e){return fb;} };
+const save = (k,d) => { try { localStorage.setItem(k,JSON.stringify(d)); } catch(e){} };
+
+/* ── SEED ── */
+const SEED_C = [
+  { id:1, name:"Ana Luiza Ferreira", city:"Caxambu", phone:"(35) 99812-3456", email:"analuiza@email.com",
+    sessionType:"Casamento", weddingServices:["Cerimônia","Recepção","Making Off","Álbum"],
+    paymentMode:"pacote", totalPhotos:800, deliveredPhotos:800, pendingPhotos:0,
+    pricePerPhoto:0, totalValue:4800, status:"entregue", sessionDate:"2026-03-15",
+    notes:"Casamento no haras.", avatar:"AL", costs:[{id:11,cat:"Deslocamento",desc:"Haras 40km",value:120},{id:12,cat:"Assistente",desc:"2º fotógrafo",value:350}],
+    payments:[{id:101,date:"2026-02-01",value:2400,note:"Sinal 50%"},{id:102,date:"2026-03-16",value:2400,note:"Restante"}] },
+  { id:2, name:"Camila Rocha Santos", city:"Baependi", phone:"(35) 99734-5678", email:"camila.rocha@email.com",
+    sessionType:"Newborn", weddingServices:[], paymentMode:"pacote",
+    totalPhotos:120, deliveredPhotos:0, pendingPhotos:120, pricePerPhoto:0,
+    totalValue:1200, status:"pendente", sessionDate:"2026-06-20",
+    notes:"Edição em andamento.", avatar:"CR", costs:[{id:21,cat:"Cenário/Montagem",desc:"Props newborn",value:90}],
+    payments:[{id:201,date:"2026-05-15",value:600,note:"Entrada 50%"}] },
+  { id:3, name:"Fernanda Oliveira", city:"Três Corações", phone:"(35) 98801-2233", email:"fernanda.o@email.com",
+    sessionType:"Aniversário", weddingServices:[], paymentMode:"por_foto",
+    totalPhotos:350, deliveredPhotos:200, pendingPhotos:150, pricePerPhoto:8,
+    totalValue:2800, status:"parcial", sessionDate:"2026-05-10",
+    notes:"Álbum em produção.", avatar:"FO", costs:[{id:31,cat:"Deslocamento",desc:"Salão",value:80}],
+    payments:[{id:301,date:"2026-04-10",value:1400,note:"50% antecipado"},{id:302,date:"2026-05-11",value:600,note:"Parcela 2"}] },
+  { id:4, name:"Beatriz Alves Nunes", city:"Caxambu", phone:"(35) 98955-4422", email:"bia.nunes@email.com",
+    sessionType:"Casamento", weddingServices:["Cerimônia","Recepção","Álbum","Festa"],
+    paymentMode:"pacote", totalPhotos:950, deliveredPhotos:400, pendingPhotos:550,
+    pricePerPhoto:0, totalValue:5500, status:"parcial", sessionDate:"2026-05-30",
+    notes:"Edição em andamento.", avatar:"BA", costs:[{id:61,cat:"Deslocamento",desc:"Chácara 25km",value:90},{id:62,cat:"Assistente",desc:"2º fotógrafo",value:350}],
+    payments:[{id:401,date:"2026-04-01",value:1500,note:"Sinal"},{id:402,date:"2026-05-30",value:1250,note:"Parcela 2"}] },
+];
+const SEED_A = [
+  {id:1,clientId:2,date:"2026-06-25",time:"09:00",type:"Newborn",location:"Estúdio GP",status:"confirmado",notes:"Trazer roupinhas neutras."},
+  {id:2,clientId:3,date:"2026-07-05",time:"14:00",type:"Reunião",location:"Estúdio GP",status:"confirmado",notes:"Apresentação do álbum."},
+  {id:3,clientId:4,date:"2026-07-02",time:"10:00",type:"Entrega",location:"Online",status:"pendente",notes:"Galeria parcial."},
+];
+
+/* ── HELPERS ── */
+const fmt  = v => `R$\u00a0${Number(v||0).toLocaleString("pt-BR",{minimumFractionDigits:2})}`;
+const fmtD = d => { try { return new Date(d+"T12:00:00").toLocaleDateString("pt-BR"); } catch(e){return d||"";} };
+const mS   = d => { try { return new Date(d+"T12:00:00").toLocaleString("pt-BR",{month:"short"}).replace(".",""); } catch(e){return "";} };
+const paidTotal = c => (c.payments||[]).reduce((s,p)=>s+p.value,0);
+const costsTotal = c => (c.costs||[]).reduce((s,x)=>s+x.value,0);
+const effectiveTotal = c => c.paymentMode==="por_foto" ? (c.deliveredPhotos||0)*(c.pricePerPhoto||0) : (c.totalValue||0);
+
+/* ── ICONS ── */
+const Ic = ({n,size=20,color="currentColor"}) => {
+  const p = {
+    home:<><rect x="3" y="10" width="18" height="11" rx="1"/><polyline points="3 10 12 3 21 10"/></>,
+    users:<><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>,
+    cal:<><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></>,
+    img:<><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></>,
+    wallet:<><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></>,
+    chart:<><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></>,
+    plus:<><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></>,
+    x:<><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>,
+    edit:<><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></>,
+    trash:<><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/></>,
+    camera:<><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></>,
+    upload:<><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></>,
+    search:<><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></>,
+    phone:<><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.62 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></>,
+    mail:<><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></>,
+    cost:<><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></>,
+    ring:<><path d="M20 12V8a8 8 0 1 0-16 0v4"/><rect x="2" y="12" width="4" height="8" rx="1"/><rect x="18" y="12" width="4" height="8" rx="1"/></>,
+    check:<><polyline points="20 6 9 17 4 12"/></>,
+    pin:<><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></>,
+    money:<><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></>,
+  };
+  return <svg width={size} height={size} fill="none" stroke={color} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">{p[n]}</svg>;
+};
+
+/* ── MICRO ── */
+const Avatar = ({initials,size=40}) => (
+  <div style={{width:size,height:size,borderRadius:"50%",flexShrink:0,background:`linear-gradient(135deg,${C.bronzeLight},${C.bronzeDark})`,display:"flex",alignItems:"center",justifyContent:"center",color:C.white,fontWeight:700,fontSize:size*.34}}>{initials}</div>
+);
+
+const Badge = ({status}) => {
+  const M={entregue:{bg:"#E5F4E9",c:C.success,l:"Entregue"},pendente:{bg:"#FDF0DE",c:C.warning,l:"Pendente"},parcial:{bg:"#E6EFF9",c:C.info,l:"Parcial"},confirmado:{bg:"#E5F4E9",c:C.success,l:"Confirmado"},disponivel:{bg:C.beige,c:C.textMid,l:"Disponível"},quitado:{bg:"#E5F4E9",c:C.success,l:"✓ Quitado"}};
+  const s=M[status]||M.pendente;
+  return <span style={{background:s.bg,color:s.c,borderRadius:20,padding:"3px 10px",fontSize:10,fontWeight:700,letterSpacing:.5,textTransform:"uppercase",whiteSpace:"nowrap"}}>{s.l}</span>;
+};
+
+const Bar = ({value,max,color=C.bronze,h=6}) => {
+  const pct=max?Math.min(100,Math.round(value/max*100)):0;
+  return <div style={{background:C.beige,borderRadius:6,height:h,overflow:"hidden",marginTop:5}}><div style={{width:`${pct}%`,height:"100%",background:`linear-gradient(90deg,${color}88,${color})`,borderRadius:6,transition:"width .4s"}}/></div>;
+};
+
+/* ── SHEET ── */
+const Sheet = ({title,onClose,children}) => {
+  useEffect(()=>{document.body.style.overflow="hidden";return()=>{document.body.style.overflow="";};},[]);
+  return (
+    <div style={{position:"fixed",inset:0,zIndex:200,display:"flex",flexDirection:"column",justifyContent:"flex-end"}}>
+      <div style={{position:"absolute",inset:0,background:C.overlay}} onClick={onClose}/>
+      <div style={{position:"relative",background:C.white,borderRadius:"20px 20px 0 0",maxHeight:"93vh",overflow:"auto",boxShadow:"0 -8px 40px rgba(30,12,4,.22)",paddingBottom:"env(safe-area-inset-bottom,20px)"}}>
+        <div style={{display:"flex",justifyContent:"center",padding:"12px 0 4px"}}><div style={{width:36,height:4,borderRadius:2,background:C.beigeM}}/></div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 20px 14px"}}>
+          <span style={{fontFamily:"Georgia,serif",fontSize:17,fontWeight:700,color:C.text}}>{title}</span>
+          <button onClick={onClose} style={{background:C.beige,border:"none",borderRadius:50,width:32,height:32,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}><Ic n="x" size={16} color={C.textMid}/></button>
+        </div>
+        <div style={{padding:"0 20px 24px"}}>{children}</div>
+      </div>
+    </div>
+  );
+};
+
+/* ── PRIMITIVES ── */
+const PageHeader = ({title,sub,action}) => (
+  <div style={{position:"sticky",top:0,zIndex:50,background:C.cream,padding:"14px 20px 10px",borderBottom:`1px solid ${C.beige}`}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+      <div><div style={{fontFamily:"Georgia,serif",fontSize:22,fontWeight:700,color:C.text,lineHeight:1.1}}>{title}</div>{sub&&<div style={{fontSize:12,color:C.textMid,marginTop:2}}>{sub}</div>}</div>
+      {action}
+    </div>
+  </div>
+);
+
+const AddBtn = ({onClick}) => (
+  <button onClick={onClick} style={{width:38,height:38,borderRadius:12,background:`linear-gradient(135deg,${C.bronze},${C.bronzeDark})`,border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",boxShadow:`0 3px 10px ${C.bronze}44`}}>
+    <Ic n="plus" size={18} color={C.white}/>
+  </button>
+);
+
+const Btn = ({children,onClick,variant="primary",full,small,icon,sx={}}) => {
+  const vs={
+    primary:{background:`linear-gradient(135deg,${C.bronze},${C.bronzeDark})`,color:C.white,border:"none",boxShadow:`0 3px 12px ${C.bronze}44`},
+    secondary:{background:C.white,color:C.bronze,border:`1.5px solid ${C.bronze}`},
+    ghost:{background:C.beige,color:C.text,border:"none"},
+    danger:{background:C.danger,color:C.white,border:"none"},
+    soft:{background:`${C.bronze}18`,color:C.bronze,border:"none"},
+    purple:{background:C.purple,color:C.white,border:"none"},
+  };
+  return <button onClick={onClick} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,borderRadius:12,padding:small?"8px 14px":"13px 20px",fontSize:small?12:14,fontWeight:700,cursor:"pointer",letterSpacing:.3,width:full?"100%":undefined,WebkitTapHighlightColor:"transparent",...vs[variant],...sx}}>{icon&&<Ic n={icon} size={small?13:15} color="currentColor"/>}{children}</button>;
+};
+
+const Field = ({label,value,onChange,type="text",placeholder=""}) => (
+  <div style={{marginBottom:13}}>
+    {label&&<label style={{display:"block",fontSize:10,fontWeight:700,color:C.textMid,letterSpacing:.9,textTransform:"uppercase",marginBottom:5}}>{label}</label>}
+    <input type={type} value={value||""} onChange={e=>onChange(e.target.value)} placeholder={placeholder} style={{width:"100%",padding:"11px 14px",borderRadius:10,border:`1.5px solid ${C.beigeM}`,fontSize:14,color:C.text,background:C.cream,outline:"none",boxSizing:"border-box",fontFamily:"inherit",WebkitAppearance:"none"}}/>
+  </div>
+);
+
+const Sel = ({label,value,onChange,options}) => (
+  <div style={{marginBottom:13}}>
+    {label&&<label style={{display:"block",fontSize:10,fontWeight:700,color:C.textMid,letterSpacing:.9,textTransform:"uppercase",marginBottom:5}}>{label}</label>}
+    <select value={value||""} onChange={e=>onChange(e.target.value)} style={{width:"100%",padding:"11px 14px",borderRadius:10,border:`1.5px solid ${C.beigeM}`,fontSize:14,color:C.text,background:C.cream,outline:"none",boxSizing:"border-box",fontFamily:"inherit",WebkitAppearance:"none",appearance:"none"}}>
+      {options.map(o=><option key={o.value??o} value={o.value??o}>{o.label??o}</option>)}
+    </select>
+  </div>
+);
+
+/* ── BOTTOM NAV ── */
+const NAV=[{id:"home",label:"Início",icon:"home"},{id:"clients",label:"Clientes",icon:"users"},{id:"agenda",label:"Agenda",icon:"cal"},{id:"photos",label:"Fotos",icon:"img"},{id:"payments",label:"Pgto",icon:"wallet"},{id:"financeiro",label:"Análise",icon:"chart"}];
+const BottomNav = ({page,setPage}) => (
+  <div style={{position:"fixed",bottom:0,left:0,right:0,zIndex:100,background:C.white,borderTop:`1px solid ${C.beige}`,display:"flex",paddingBottom:"env(safe-area-inset-bottom,6px)",boxShadow:"0 -4px 20px rgba(60,30,10,.08)"}}>
+    {NAV.map(n=>{
+      const active=page===n.id;
+      return <button key={n.id} onClick={()=>setPage(n.id)} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2,padding:"9px 2px 5px",border:"none",background:"none",color:active?C.bronze:C.textLight,cursor:"pointer",WebkitTapHighlightColor:"transparent"}}>
+        <div style={{position:"relative"}}><Ic n={n.icon} size={20} color={active?C.bronze:C.textLight}/>{active&&<div style={{position:"absolute",bottom:-3,left:"50%",transform:"translateX(-50%)",width:4,height:4,borderRadius:"50%",background:C.bronze}}/>}</div>
+        <span style={{fontSize:9,fontWeight:active?700:500}}>{n.label}</span>
+      </button>;
+    })}
+  </div>
+);
+
+/* ══════════ HOME ══════════ */
+const Home = ({clients,agenda}) => {
+  const today = new Date().toISOString().slice(0,10);
+  const totalRec  = clients.reduce((s,c)=>s+paidTotal(c),0);
+  const totalPend = clients.reduce((s,c)=>s+(effectiveTotal(c)-paidTotal(c)),0);
+  const allCosts  = clients.reduce((s,c)=>s+costsTotal(c),0);
+  const lucro     = totalRec-allCosts;
+  const delP      = clients.reduce((s,c)=>s+c.deliveredPhotos,0);
+  const totP      = clients.reduce((s,c)=>s+c.totalPhotos,0);
+  const upcoming  = agenda.filter(a=>a.date>=today).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,4);
+  const alertas   = clients.filter(c=>c.status!=="entregue"||paidTotal(c)<effectiveTotal(c));
+  return (
+    <div style={{paddingBottom:84}}>
+      <div style={{background:`linear-gradient(160deg,${C.bronzeDark},${C.bronze})`,padding:"28px 20px 22px"}}>
+        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18}}>
+          <div style={{width:42,height:42,borderRadius:12,background:"rgba(255,255,255,.18)",display:"flex",alignItems:"center",justifyContent:"center"}}><Ic n="camera" size={22} color={C.white}/></div>
+          <div><div style={{fontFamily:"Georgia,serif",fontSize:17,fontWeight:700,color:C.white,lineHeight:1}}>Giovana Petronilho</div><div style={{fontSize:11,color:"rgba(255,255,255,.7)",letterSpacing:.5}}>FOTOGRAFIA · CAXAMBU MG</div></div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          {[["Recebido",fmt(totalRec),C.white],["A Receber",fmt(Math.max(0,totalPend)),C.bronzeXL],["Lucro Líquido",fmt(lucro),lucro>=0?"#A8E6B4":"#F4B8B8"],["Fotos",`${delP}/${totP}`,C.white]].map(([l,v,col])=>(
+            <div key={l} style={{background:"rgba(255,255,255,.14)",borderRadius:14,padding:"14px 16px"}}>
+              <div style={{fontSize:10,color:"rgba(255,255,255,.65)",letterSpacing:.6,textTransform:"uppercase",marginBottom:3}}>{l}</div>
+              <div style={{fontFamily:"Georgia,serif",fontSize:18,fontWeight:700,color:col,lineHeight:1}}>{v}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div style={{padding:"18px 16px 0"}}>
+        {upcoming.length>0&&(
+          <div style={{marginBottom:22}}>
+            <div style={{fontSize:11,fontWeight:700,color:C.textMid,letterSpacing:.7,textTransform:"uppercase",marginBottom:10}}>Próximas Sessões</div>
+            {upcoming.map(a=>{
+              const cl=clients.find(c=>c.id===a.clientId);
+              const tc=AGENDA_TC[a.type]||C.bronze;
+              return <div key={a.id} style={{background:C.white,borderRadius:14,padding:"13px 16px",display:"flex",alignItems:"center",gap:14,boxShadow:"0 1px 8px rgba(60,30,10,.07)",borderLeft:`3px solid ${tc}`,marginBottom:8}}>
+                <div style={{textAlign:"center",minWidth:32}}>
+                  <div style={{fontFamily:"Georgia,serif",fontSize:19,fontWeight:800,color:tc,lineHeight:1}}>{new Date(a.date+"T12:00:00").getDate()}</div>
+                  <div style={{fontSize:9,color:C.textLight,textTransform:"uppercase"}}>{mS(a.date)}</div>
+                </div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontWeight:700,color:C.text,fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{cl?.name||"Cliente"}</div>
+                  <div style={{fontSize:11,color:C.textMid}}>{a.time} · {a.location}</div>
+                </div>
+                <span style={{fontSize:10,fontWeight:700,color:tc,background:`${tc}18`,borderRadius:10,padding:"3px 8px",whiteSpace:"nowrap"}}>{a.type}</span>
+              </div>;
+            })}
+          </div>
+        )}
+        {alertas.length>0&&(
+          <div>
+            <div style={{fontSize:11,fontWeight:700,color:C.textMid,letterSpacing:.7,textTransform:"uppercase",marginBottom:10}}>Atenção Necessária</div>
+            {alertas.slice(0,4).map(c=>(
+              <div key={c.id} style={{background:C.white,borderRadius:14,padding:"12px 16px",display:"flex",alignItems:"center",gap:12,boxShadow:"0 1px 8px rgba(60,30,10,.07)",marginBottom:8}}>
+                <Avatar initials={c.avatar} size={36}/>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontWeight:700,color:C.text,fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</div>
+                  <div style={{fontSize:11,color:C.textMid}}>{c.city} · {c.sessionType}</div>
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:3,alignItems:"flex-end"}}>
+                  {c.pendingPhotos>0&&<span style={{fontSize:10,color:C.warning,fontWeight:600}}>{c.pendingPhotos} fotos</span>}
+                  {paidTotal(c)<effectiveTotal(c)&&<span style={{fontSize:10,color:C.danger,fontWeight:600}}>{fmt(effectiveTotal(c)-paidTotal(c))}</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+/* ══════════ CLIENTS ══════════ */
+const Clients = ({clients,setClients}) => {
+  const [search,setSearch]=useState("");
+  const [filter,setFilter]=useState("todos");
+  const [sheet,setSheet]=useState(null);
+  const [detail,setDetail]=useState(null);
+  const [form,setForm]=useState({});
+  const [weddingSel,setWeddingSel]=useState([]);
+
+  const filtered=useMemo(()=>clients.filter(c=>{
+    const m=`${c.name} ${c.sessionType} ${c.city||""}`.toLowerCase().includes(search.toLowerCase());
+    return filter==="todos"?m:m&&c.status===filter;
+  }),[clients,search,filter]);
+
+  const openNew=()=>{ setForm({name:"",city:"",phone:"",email:"",sessionType:"Casamento",sessionDate:"",totalPhotos:"",totalValue:"",pricePerPhoto:"",paymentMode:"pacote",notes:"",costs:[],payments:[],weddingServices:[],deliveredPhotos:0,pendingPhotos:0,status:"pendente"}); setWeddingSel([]); setSheet("new"); };
+  const openEdit=c=>{ setForm({...c,totalPhotos:String(c.totalPhotos||""),totalValue:String(c.totalValue||""),pricePerPhoto:String(c.pricePerPhoto||"")}); setWeddingSel(c.weddingServices||[]); setSheet(c); };
+
+  const save=()=>{
+    const tp=Number(form.totalPhotos)||0;
+    const base={...form,totalPhotos:tp,totalValue:Number(form.totalValue)||0,pricePerPhoto:Number(form.pricePerPhoto)||0,weddingServices:weddingSel};
+    if(sheet==="new"){
+      const w=form.name.trim().split(" ");
+      setClients(p=>[{...base,id:Date.now(),avatar:((w[0]?.[0]||"")+(w[1]?.[0]||"")).toUpperCase(),deliveredPhotos:0,pendingPhotos:tp,status:"pendente",costs:[],payments:[]},...p]);
+    } else {
+      setClients(p=>p.map(c=>c.id===sheet.id?{...c,...base}:c));
+    }
+    setSheet(null);
+  };
+  const del=id=>{ setClients(p=>p.filter(c=>c.id!==id)); setDetail(null); };
+  const toggleWS=s=>setWeddingSel(p=>p.includes(s)?p.filter(x=>x!==s):[...p,s]);
+
+  return (
+    <div style={{paddingBottom:84}}>
+      <PageHeader title="Clientes" sub={`${clients.length} cadastradas`} action={<AddBtn onClick={openNew}/>}/>
+      <div style={{padding:"12px 16px 4px"}}>
+        <div style={{position:"relative",marginBottom:10}}>
+          <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)"}}><Ic n="search" size={15} color={C.textLight}/></span>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar por nome, cidade ou tipo..." style={{width:"100%",padding:"10px 14px 10px 36px",borderRadius:10,border:`1.5px solid ${C.beigeM}`,fontSize:13,color:C.text,background:C.white,outline:"none",boxSizing:"border-box",fontFamily:"inherit"}}/>
+        </div>
+        <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:4,scrollbarWidth:"none"}}>
+          {["todos","pendente","parcial","entregue"].map(f=>(
+            <button key={f} onClick={()=>setFilter(f)} style={{flexShrink:0,padding:"6px 16px",borderRadius:20,border:`1.5px solid ${filter===f?C.bronze:C.beigeM}`,background:filter===f?C.bronze:C.white,color:filter===f?C.white:C.textMid,fontSize:11,fontWeight:700,cursor:"pointer"}}>{f}</button>
+          ))}
+        </div>
+      </div>
+      <div style={{padding:"8px 16px",display:"flex",flexDirection:"column",gap:10}}>
+        {filtered.map(c=>{
+          const paid=paidTotal(c); const eff=effectiveTotal(c); const costs=costsTotal(c); const lucro=paid-costs;
+          return (
+            <div key={c.id} onClick={()=>setDetail(c)} style={{background:C.white,borderRadius:16,padding:"16px",boxShadow:"0 1px 8px rgba(60,30,10,.07)",cursor:"pointer"}}>
+              <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:10}}>
+                <Avatar initials={c.avatar}/>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontWeight:700,color:C.text,fontSize:14,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</div>
+                  <div style={{fontSize:11,color:C.textMid,display:"flex",alignItems:"center",gap:4}}>
+                    <Ic n="pin" size={10} color={C.textLight}/>{c.city||"—"} · {c.sessionType} · {fmtD(c.sessionDate)}
+                  </div>
+                  {c.sessionType==="Casamento"&&(c.weddingServices||[]).length>0&&(
+                    <div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:4}}>
+                      {(c.weddingServices||[]).map(s=><span key={s} style={{fontSize:9,background:`${C.purple}18`,color:C.purple,borderRadius:8,padding:"2px 7px",fontWeight:700}}>{s}</span>)}
+                    </div>
+                  )}
+                </div>
+                <Badge status={c.status}/>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+                <div style={{background:C.cream,borderRadius:10,padding:"8px 10px"}}>
+                  <div style={{fontSize:9,color:C.textLight,textTransform:"uppercase"}}>Fotos</div>
+                  <div style={{fontWeight:700,color:C.text,fontSize:12}}>{c.deliveredPhotos}/{c.totalPhotos}</div>
+                  <Bar value={c.deliveredPhotos} max={c.totalPhotos}/>
+                </div>
+                <div style={{background:C.cream,borderRadius:10,padding:"8px 10px"}}>
+                  <div style={{fontSize:9,color:C.textLight,textTransform:"uppercase"}}>{c.paymentMode==="por_foto"?"Por Foto":"Pago"}</div>
+                  <div style={{fontWeight:700,color:paid>=eff?C.success:C.warning,fontSize:12}}>{fmt(paid)}</div>
+                  <Bar value={paid} max={eff} color={paid>=eff?C.success:C.warning}/>
+                </div>
+                <div style={{background:C.cream,borderRadius:10,padding:"8px 10px"}}>
+                  <div style={{fontSize:9,color:C.textLight,textTransform:"uppercase"}}>Lucro</div>
+                  <div style={{fontWeight:700,color:lucro>=0?C.success:C.danger,fontSize:12}}>{fmt(lucro)}</div>
+                  <Bar value={Math.max(0,lucro)} max={paid||1} color={lucro>=0?C.success:C.danger}/>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* DETAIL */}
+      {detail&&(
+        <Sheet title="Detalhes" onClose={()=>setDetail(null)}>
+          <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:18}}>
+            <Avatar initials={detail.avatar} size={50}/>
+            <div>
+              <div style={{fontFamily:"Georgia,serif",fontSize:17,fontWeight:700,color:C.text}}>{detail.name}</div>
+              <div style={{fontSize:12,color:C.textMid,display:"flex",alignItems:"center",gap:4}}><Ic n="pin" size={12} color={C.bronze}/>{detail.city||"—"} · {detail.sessionType}</div>
+            </div>
+          </div>
+          {detail.sessionType==="Casamento"&&(detail.weddingServices||[]).length>0&&(
+            <div style={{marginBottom:14}}>
+              <div style={{fontSize:10,fontWeight:700,color:C.textMid,letterSpacing:.7,textTransform:"uppercase",marginBottom:8}}>Serviços do Casamento</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                {(detail.weddingServices||[]).map(s=><span key={s} style={{fontSize:12,background:`${C.purple}18`,color:C.purple,borderRadius:10,padding:"5px 12px",fontWeight:600}}>{s}</span>)}
+              </div>
+            </div>
+          )}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
+            {[["Sessão",fmtD(detail.sessionDate)],["Cobrança",detail.paymentMode==="por_foto"?`R$ ${detail.pricePerPhoto}/foto`:"Pacote"],["Fotos",`${detail.deliveredPhotos}/${detail.totalPhotos}`],["Valor",fmt(effectiveTotal(detail))],["Pago",fmt(paidTotal(detail))],["Custos",fmt(costsTotal(detail))],["Saldo",fmt(effectiveTotal(detail)-paidTotal(detail))],["Lucro",fmt(paidTotal(detail)-costsTotal(detail))]].map(([l,v])=>(
+              <div key={l} style={{background:C.cream,borderRadius:10,padding:"10px 12px"}}>
+                <div style={{fontSize:9,fontWeight:700,color:C.textLight,letterSpacing:.7,textTransform:"uppercase"}}>{l}</div>
+                <div style={{fontWeight:700,color:C.text,fontSize:13,marginTop:2}}>{v}</div>
+              </div>
+            ))}
+          </div>
+          {detail.phone&&<a href={`tel:${detail.phone}`} style={{display:"flex",alignItems:"center",gap:8,padding:"12px 16px",background:C.cream,borderRadius:12,marginBottom:6,textDecoration:"none",color:C.text,fontSize:13,fontWeight:600}}><Ic n="phone" size={15} color={C.bronze}/>{detail.phone}</a>}
+          {detail.email&&<a href={`mailto:${detail.email}`} style={{display:"flex",alignItems:"center",gap:8,padding:"12px 16px",background:C.cream,borderRadius:12,marginBottom:14,textDecoration:"none",color:C.text,fontSize:13,fontWeight:600}}><Ic n="mail" size={15} color={C.bronze}/>{detail.email}</a>}
+          {detail.notes&&<div style={{background:C.beige,borderRadius:12,padding:"12px 14px",fontSize:12,color:C.textMid,marginBottom:14,fontStyle:"italic"}}>{detail.notes}</div>}
+          <div style={{display:"flex",gap:10}}>
+            <Btn full variant="ghost" icon="edit" onClick={()=>{openEdit(detail);setDetail(null);}}>Editar</Btn>
+            <Btn full variant="danger" icon="trash" onClick={()=>del(detail.id)}>Excluir</Btn>
+          </div>
+        </Sheet>
+      )}
+
+      {/* FORM */}
+      {sheet&&(
+        <Sheet title={sheet==="new"?"Nova Cliente":"Editar Cliente"} onClose={()=>setSheet(null)}>
+          <Field label="Nome completo" value={form.name} onChange={v=>setForm(f=>({...f,name:v}))}/>
+          <Field label="Cidade" value={form.city} onChange={v=>setForm(f=>({...f,city:v}))} placeholder="Ex: Caxambu"/>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+            <Field label="Telefone" value={form.phone} onChange={v=>setForm(f=>({...f,phone:v}))}/>
+            <Field label="E-mail" value={form.email} onChange={v=>setForm(f=>({...f,email:v}))}/>
+          </div>
+          <Sel label="Tipo de Sessão" value={form.sessionType} onChange={v=>setForm(f=>({...f,sessionType:v}))} options={SESSION_TYPES}/>
+
+          {/* Wedding services */}
+          {form.sessionType==="Casamento"&&(
+            <div style={{marginBottom:13}}>
+              <label style={{display:"block",fontSize:10,fontWeight:700,color:C.textMid,letterSpacing:.9,textTransform:"uppercase",marginBottom:8}}>Serviços do Casamento</label>
+              <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+                {WEDDING_SERVICES.map(s=>(
+                  <button key={s} onClick={()=>toggleWS(s)} style={{padding:"6px 14px",borderRadius:20,border:`1.5px solid ${weddingSel.includes(s)?C.purple:C.beigeM}`,background:weddingSel.includes(s)?`${C.purple}18`:C.white,color:weddingSel.includes(s)?C.purple:C.textMid,fontSize:12,fontWeight:700,cursor:"pointer"}}>
+                    {weddingSel.includes(s)?"✓ ":""}{s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <Field label="Data da Sessão" type="date" value={form.sessionDate} onChange={v=>setForm(f=>({...f,sessionDate:v}))}/>
+          <Field label="Total de Fotos" type="number" value={form.totalPhotos} onChange={v=>setForm(f=>({...f,totalPhotos:v}))}/>
+
+          {/* Payment mode */}
+          <div style={{marginBottom:13}}>
+            <label style={{display:"block",fontSize:10,fontWeight:700,color:C.textMid,letterSpacing:.9,textTransform:"uppercase",marginBottom:8}}>Tipo de Cobrança</label>
+            <div style={{display:"flex",gap:10}}>
+              {PAYMENT_MODES.map(m=>(
+                <button key={m.value} onClick={()=>setForm(f=>({...f,paymentMode:m.value}))} style={{flex:1,padding:"10px",borderRadius:10,border:`1.5px solid ${form.paymentMode===m.value?C.bronze:C.beigeM}`,background:form.paymentMode===m.value?`${C.bronze}18`:C.white,color:form.paymentMode===m.value?C.bronze:C.textMid,fontSize:12,fontWeight:700,cursor:"pointer",textAlign:"center"}}>
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {form.paymentMode==="pacote"
+            ? <Field label="Valor do Pacote (R$)" type="number" value={form.totalValue} onChange={v=>setForm(f=>({...f,totalValue:v}))}/>
+            : <Field label="Preço por Foto (R$)" type="number" value={form.pricePerPhoto} onChange={v=>setForm(f=>({...f,pricePerPhoto:v}))} placeholder="Ex: 8.00"/>
+          }
+          <Field label="Observações" value={form.notes} onChange={v=>setForm(f=>({...f,notes:v}))}/>
+          <Btn full onClick={save}>Salvar Cliente</Btn>
+        </Sheet>
+      )}
+    </div>
+  );
+};
+
+/* ══════════ AGENDA ══════════ */
+const Agenda = ({agenda,setAgenda,clients}) => {
+  const [sheet,setSheet]=useState(false);
+  const [form,setForm]=useState({});
+  const byDate=useMemo(()=>{
+    const m={};
+    agenda.forEach(a=>{if(!m[a.date])m[a.date]=[];m[a.date].push(a);});
+    return Object.entries(m).sort(([a],[b])=>a.localeCompare(b));
+  },[agenda]);
+  const save=()=>{setAgenda(p=>[...p,{...form,id:Date.now(),clientId:Number(form.clientId)}]);setSheet(false);};
+  return (
+    <div style={{paddingBottom:84}}>
+      <PageHeader title="Agenda" sub={`${agenda.length} agendamentos`} action={<AddBtn onClick={()=>{setForm({clientId:"",date:"",time:"",type:"Newborn",location:"Estúdio GP",status:"confirmado",notes:""});setSheet(true);}}/>}/>
+      <div style={{padding:"14px 16px"}}>
+        {byDate.map(([date,items])=>(
+          <div key={date} style={{marginBottom:20}}>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+              <div style={{background:C.bronze,color:C.white,borderRadius:20,padding:"5px 14px",fontSize:12,fontWeight:700}}>{fmtD(date)}</div>
+              <div style={{flex:1,height:1,background:C.beigeM}}/>
+            </div>
+            {items.map(a=>{
+              const cl=clients.find(c=>c.id===a.clientId);
+              const tc=AGENDA_TC[a.type]||C.bronze;
+              return <div key={a.id} style={{background:C.white,borderRadius:14,padding:"13px 16px",display:"flex",gap:14,boxShadow:"0 1px 8px rgba(60,30,10,.07)",borderLeft:`3px solid ${tc}`,marginBottom:8}}>
+                <div style={{textAlign:"center",minWidth:44}}>
+                  <div style={{fontFamily:"Georgia,serif",fontSize:15,fontWeight:800,color:tc}}>{a.time}</div>
+                  <span style={{fontSize:9,fontWeight:700,color:tc,background:`${tc}18`,borderRadius:8,padding:"2px 6px"}}>{a.type}</span>
+                </div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontWeight:700,color:C.text,fontSize:13}}>{cl?.name||"Cliente"}</div>
+                  <div style={{fontSize:11,color:C.textMid}}>{a.location}</div>
+                  {a.notes&&<div style={{fontSize:11,color:C.textLight,marginTop:3,fontStyle:"italic"}}>{a.notes}</div>}
+                </div>
+                <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:8}}>
+                  <Badge status={a.status}/>
+                  <button onClick={()=>setAgenda(p=>p.filter(x=>x.id!==a.id))} style={{background:"#FAE8E8",border:"none",borderRadius:8,padding:"5px 7px",cursor:"pointer"}}><Ic n="trash" size={13} color={C.danger}/></button>
+                </div>
+              </div>;
+            })}
+          </div>
+        ))}
+      </div>
+      {sheet&&(
+        <Sheet title="Novo Agendamento" onClose={()=>setSheet(false)}>
+          <Sel label="Cliente" value={form.clientId} onChange={v=>setForm(f=>({...f,clientId:v}))} options={[{value:"",label:"Selecionar..."},...clients.map(c=>({value:c.id,label:c.name}))]}/>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+            <Field label="Data" type="date" value={form.date} onChange={v=>setForm(f=>({...f,date:v}))}/>
+            <Field label="Horário" type="time" value={form.time} onChange={v=>setForm(f=>({...f,time:v}))}/>
+          </div>
+          <Sel label="Tipo" value={form.type} onChange={v=>setForm(f=>({...f,type:v}))} options={["Newborn","Casamento","Debutante","Gestante","Família","Reunião","Entrega","Ensaio","Making Off","Cerimônia","Recepção"]}/>
+          <Field label="Local" value={form.location} onChange={v=>setForm(f=>({...f,location:v}))}/>
+          <Sel label="Status" value={form.status} onChange={v=>setForm(f=>({...f,status:v}))} options={[{value:"confirmado",label:"Confirmado"},{value:"pendente",label:"Pendente"},{value:"disponivel",label:"Disponível"}]}/>
+          <Field label="Observações" value={form.notes} onChange={v=>setForm(f=>({...f,notes:v}))}/>
+          <Btn full onClick={save}>Salvar</Btn>
+        </Sheet>
+      )}
+    </div>
+  );
+};
+
+/* ══════════ FOTOS ══════════ */
+const Photos = ({clients,setClients}) => {
+  const [sel,setSel]=useState(null);
+  const [qty,setQty]=useState("");
+  const deliver=id=>{
+    const q=Number(qty);if(!q||q<=0)return;
+    setClients(p=>p.map(c=>{if(c.id!==id)return c;const d=Math.min(c.deliveredPhotos+q,c.totalPhotos);const pn=c.totalPhotos-d;return{...c,deliveredPhotos:d,pendingPhotos:pn,status:pn===0?"entregue":d>0?"parcial":"pendente"};}));
+    setSel(null);setQty("");
+  };
+  const total=clients.reduce((s,c)=>s+c.totalPhotos,0);
+  const del=clients.reduce((s,c)=>s+c.deliveredPhotos,0);
+  return (
+    <div style={{paddingBottom:84}}>
+      <PageHeader title="Fotos" sub="Controle de entregas"/>
+      <div style={{display:"flex",gap:10,padding:"14px 16px 4px"}}>
+        {[["Total",total,C.bronze],["Entregues",del,C.success],["Pendentes",total-del,C.warning]].map(([l,v,col])=>(
+          <div key={l} style={{background:C.white,borderRadius:14,padding:"12px 14px",flex:1,boxShadow:"0 1px 8px rgba(60,30,10,.07)"}}>
+            <div style={{fontSize:9,fontWeight:700,color:C.textLight,letterSpacing:.7,textTransform:"uppercase",marginBottom:3}}>{l}</div>
+            <div style={{fontFamily:"Georgia,serif",fontSize:20,fontWeight:700,color:col}}>{v}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{padding:"10px 16px",display:"flex",flexDirection:"column",gap:10}}>
+        {clients.map(c=>{
+          const pct=c.totalPhotos?Math.round(c.deliveredPhotos/c.totalPhotos*100):0;
+          return (
+            <div key={c.id} style={{background:C.white,borderRadius:16,padding:"16px",boxShadow:"0 1px 8px rgba(60,30,10,.07)"}}>
+              <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
+                <Avatar initials={c.avatar}/>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontWeight:700,color:C.text,fontSize:14,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</div>
+                  <div style={{fontSize:11,color:C.textMid}}>{c.city} · {c.sessionType}{c.paymentMode==="por_foto"?` · R$${c.pricePerPhoto}/foto`:""}</div>
+                </div>
+                <Badge status={c.status}/>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10}}>
+                {[["Contrat.",c.totalPhotos,C.text],["Entregues",c.deliveredPhotos,C.success],["Pendentes",c.pendingPhotos,C.warning]].map(([l,v,col])=>(
+                  <div key={l} style={{background:C.cream,borderRadius:10,padding:"8px 10px",textAlign:"center"}}>
+                    <div style={{fontSize:9,color:C.textLight,textTransform:"uppercase"}}>{l}</div>
+                    <div style={{fontFamily:"Georgia,serif",fontSize:18,fontWeight:700,color:col}}>{v}</div>
+                  </div>
+                ))}
+              </div>
+              {c.paymentMode==="por_foto"&&c.deliveredPhotos>0&&(
+                <div style={{background:`${C.success}18`,borderRadius:10,padding:"8px 12px",marginBottom:10,display:"flex",justifyContent:"space-between"}}>
+                  <span style={{fontSize:12,color:C.textMid}}>Valor gerado pelas fotos entregues</span>
+                  <span style={{fontSize:13,fontWeight:700,color:C.success}}>{fmt(c.deliveredPhotos*(c.pricePerPhoto||0))}</span>
+                </div>
+              )}
+              <div style={{marginBottom:c.pendingPhotos>0?10:0}}>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{fontSize:10,color:C.textLight}}>Progresso</span><span style={{fontSize:10,fontWeight:700,color:C.bronze}}>{pct}%</span></div>
+                <Bar value={c.deliveredPhotos} max={c.totalPhotos}/>
+              </div>
+              {c.pendingPhotos>0&&<Btn full small icon="upload" onClick={()=>{setSel(c);setQty("");}}>Registrar Entrega</Btn>}
+            </div>
+          );
+        })}
+      </div>
+      {sel&&(
+        <Sheet title="Registrar Entrega" onClose={()=>setSel(null)}>
+          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18}}><Avatar initials={sel.avatar}/><div><div style={{fontWeight:700,color:C.text}}>{sel.name}</div><div style={{fontSize:12,color:C.textMid}}>{sel.pendingPhotos} fotos pendentes{sel.paymentMode==="por_foto"?` · R$${sel.pricePerPhoto}/foto`:""}</div></div></div>
+          <Field label="Quantidade entregue" type="number" value={qty} onChange={setQty} placeholder="Ex: 50"/>
+          {sel.paymentMode==="por_foto"&&Number(qty)>0&&<div style={{background:`${C.success}18`,borderRadius:10,padding:"10px 14px",marginBottom:12,fontSize:13,color:C.success,fontWeight:600}}>Valor desta entrega: {fmt(Number(qty)*(sel.pricePerPhoto||0))}</div>}
+          <Btn full onClick={()=>deliver(sel.id)}>Confirmar Entrega</Btn>
+        </Sheet>
+      )}
+    </div>
+  );
+};
+
+/* ══════════ PAGAMENTOS ══════════ */
+const Payments = ({clients,setClients}) => {
+  const [selPay,setSelPay]=useState(null);
+  const [selCost,setSelCost]=useState(null);
+  const [payForm,setPayForm]=useState({value:"",date:"",note:""});
+  const [costForm,setCostForm]=useState({cat:"Deslocamento",desc:"",value:""});
+
+  const addPayment=id=>{
+    const v=Number(payForm.value);if(!v)return;
+    const eff=effectiveTotal(clients.find(c=>c.id===id));
+    const currentPaid=paidTotal(clients.find(c=>c.id===id));
+    const newP={id:Date.now(),value:Math.min(v,eff-currentPaid),date:payForm.date||new Date().toISOString().slice(0,10),note:payForm.note||"Pagamento"};
+    setClients(p=>p.map(c=>{ if(c.id!==id)return c; const ps=[...(c.payments||[]),newP]; const tot=ps.reduce((s,x)=>s+x.value,0); const eff2=effectiveTotal(c); return{...c,payments:ps,status:tot>=eff2?"entregue":tot>0&&c.status!=="entregue"?"parcial":c.status}; }));
+    setSelPay(null);setPayForm({value:"",date:"",note:""});
+  };
+
+  const delPayment=(clientId,payId)=>setClients(p=>p.map(c=>c.id!==clientId?c:{...c,payments:(c.payments||[]).filter(x=>x.id!==payId)}));
+
+  const addCost=id=>{
+    const v=Number(costForm.value);if(!v||!costForm.desc)return;
+    setClients(p=>p.map(c=>c.id!==id?c:{...c,costs:[...(c.costs||[]),{id:Date.now(),...costForm,value:v}]}));
+    setSelCost(null);setCostForm({cat:"Deslocamento",desc:"",value:""});
+  };
+  const delCost=(cId,xId)=>setClients(p=>p.map(c=>c.id!==cId?c:{...c,costs:(c.costs||[]).filter(x=>x.id!==xId)}));
+
+  const totalC=clients.reduce((s,c)=>s+effectiveTotal(c),0);
+  const totalR=clients.reduce((s,c)=>s+paidTotal(c),0);
+  const totalCosts=clients.reduce((s,c)=>s+costsTotal(c),0);
+  const lucroG=totalR-totalCosts;
+
+  return (
+    <div style={{paddingBottom:84}}>
+      <PageHeader title="Pagamentos" sub="Parcelas, recebimentos e custos"/>
+      <div style={{padding:"14px 16px 4px"}}>
+        {/* hero */}
+        <div style={{background:`linear-gradient(135deg,${C.bronzeDark},${C.bronze})`,borderRadius:18,padding:"18px 20px",marginBottom:14}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+            {[["Contratos",fmt(totalC),C.white],["Recebido",fmt(totalR),C.white],["Custos",fmt(totalCosts),"#F4B8B8"],["Lucro Líq.",fmt(lucroG),lucroG>=0?"#A8E6B4":"#F4B8B8"]].map(([l,v,col])=>(
+              <div key={l}><div style={{fontSize:9,color:"rgba(255,255,255,.65)",textTransform:"uppercase",letterSpacing:.6,marginBottom:2}}>{l}</div><div style={{fontFamily:"Georgia,serif",fontSize:18,fontWeight:700,color:col}}>{v}</div></div>
+            ))}
+          </div>
+          <div style={{background:"rgba(255,255,255,.2)",borderRadius:6,height:6,overflow:"hidden"}}><div style={{width:`${totalC?Math.round(totalR/totalC*100):0}%`,height:"100%",background:C.white,borderRadius:6}}/></div>
+          <div style={{fontSize:10,color:"rgba(255,255,255,.6)",marginTop:4,textAlign:"right"}}>{totalC?Math.round(totalR/totalC*100):0}% recebido</div>
+        </div>
+
+        {clients.map(c=>{
+          const paid=paidTotal(c); const eff=effectiveTotal(c); const costs=costsTotal(c);
+          const pend=eff-paid; const lucro=paid-costs; const quitado=pend<=0;
+          return (
+            <div key={c.id} style={{background:C.white,borderRadius:16,overflow:"hidden",boxShadow:"0 1px 8px rgba(60,30,10,.07)",marginBottom:12}}>
+              {/* header */}
+              <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.beige}`}}>
+                <div style={{display:"flex",alignItems:"center",gap:12}}>
+                  <Avatar initials={c.avatar}/>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontWeight:700,color:C.text,fontSize:14,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</div>
+                    <div style={{fontSize:11,color:C.textMid}}>{c.city} · {c.sessionType} · {c.paymentMode==="por_foto"?`R$${c.pricePerPhoto}/foto`:"Pacote"}</div>
+                    {c.sessionType==="Casamento"&&(c.weddingServices||[]).length>0&&(
+                      <div style={{display:"flex",flexWrap:"wrap",gap:3,marginTop:4}}>
+                        {(c.weddingServices||[]).map(s=><span key={s} style={{fontSize:9,background:`${C.purple}18`,color:C.purple,borderRadius:8,padding:"2px 7px",fontWeight:700}}>{s}</span>)}
+                      </div>
+                    )}
+                  </div>
+                  {quitado?<Badge status="quitado"/>:<Badge status="pendente"/>}
+                </div>
+              </div>
+
+              {/* financial grid */}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:1,background:C.beige}}>
+                {[["Total",fmt(eff),C.text],["Pago",fmt(paid),quitado?C.success:C.warning],["Custos",fmt(costs),C.danger]].map(([l,v,col])=>(
+                  <div key={l} style={{background:C.white,padding:"10px 12px"}}>
+                    <div style={{fontSize:9,color:C.textLight,textTransform:"uppercase",letterSpacing:.4}}>{l}</div>
+                    <div style={{fontWeight:700,color:col,fontSize:13}}>{v}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* lucro */}
+              <div style={{padding:"10px 14px",background:lucro>=0?"#E5F4E9":"#FAE8E8"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <span style={{fontSize:11,fontWeight:700,color:C.textMid}}>Lucro Líquido</span>
+                  <span style={{fontFamily:"Georgia,serif",fontSize:16,fontWeight:700,color:lucro>=0?C.success:C.danger}}>{fmt(lucro)}</span>
+                </div>
+              </div>
+
+              {/* parcelas */}
+              {(c.payments||[]).length>0&&(
+                <div style={{padding:"10px 14px",borderTop:`1px solid ${C.beige}`}}>
+                  <div style={{fontSize:10,fontWeight:700,color:C.textMid,letterSpacing:.6,textTransform:"uppercase",marginBottom:8}}>Histórico de Parcelas</div>
+                  {(c.payments||[]).map((pay,i)=>(
+                    <div key={pay.id} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 0",borderBottom:`1px solid ${C.beige}`}}>
+                      <div style={{width:22,height:22,borderRadius:"50%",background:C.success,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                        <span style={{fontSize:10,color:C.white,fontWeight:700}}>{i+1}</span>
+                      </div>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:12,fontWeight:600,color:C.text}}>{pay.note||"Pagamento"}</div>
+                        <div style={{fontSize:10,color:C.textMid}}>{fmtD(pay.date)}</div>
+                      </div>
+                      <span style={{fontSize:13,fontWeight:700,color:C.success,flexShrink:0}}>{fmt(pay.value)}</span>
+                      <button onClick={()=>delPayment(c.id,pay.id)} style={{background:"none",border:"none",cursor:"pointer",padding:"2px",flexShrink:0}}><Ic n="trash" size={13} color={C.danger}/></button>
+                    </div>
+                  ))}
+                  {!quitado&&<div style={{display:"flex",justifyContent:"space-between",padding:"8px 0 0",fontSize:12}}><span style={{color:C.textMid}}>Saldo restante</span><span style={{fontWeight:700,color:C.warning}}>{fmt(pend)}</span></div>}
+                </div>
+              )}
+
+              {/* custos */}
+              {(c.costs||[]).length>0&&(
+                <div style={{padding:"10px 14px",borderTop:`1px solid ${C.beige}`}}>
+                  <div style={{fontSize:10,fontWeight:700,color:C.textMid,letterSpacing:.6,textTransform:"uppercase",marginBottom:8}}>Custos do Ensaio</div>
+                  {(c.costs||[]).map(cost=>(
+                    <div key={cost.id} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 0",borderBottom:`1px solid ${C.beige}`}}>
+                      <div style={{width:6,height:6,borderRadius:"50%",background:C.danger,flexShrink:0}}/>
+                      <div style={{flex:1,minWidth:0}}><span style={{fontSize:12,fontWeight:600,color:C.text}}>{cost.cat}</span><span style={{fontSize:11,color:C.textMid}}> · {cost.desc}</span></div>
+                      <span style={{fontSize:12,fontWeight:700,color:C.danger,flexShrink:0}}>{fmt(cost.value)}</span>
+                      <button onClick={()=>delCost(c.id,cost.id)} style={{background:"none",border:"none",cursor:"pointer",padding:"2px",flexShrink:0}}><Ic n="trash" size={13} color={C.danger}/></button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* actions */}
+              <div style={{display:"flex",gap:8,padding:"12px 14px"}}>
+                <Btn full small icon="cost" variant="soft" onClick={()=>{setSelCost(c);setCostForm({cat:"Deslocamento",desc:"",value:""});}}>+ Custo</Btn>
+                {!quitado&&<Btn full small icon="money" onClick={()=>{setSelPay(c);setPayForm({value:"",date:"",note:""});}}>+ Parcela</Btn>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* sheet pagamento */}
+      {selPay&&(
+        <Sheet title={`Nova Parcela — ${selPay.name}`} onClose={()=>setSelPay(null)}>
+          <div style={{background:C.beige,borderRadius:12,padding:"12px 14px",marginBottom:16,fontSize:13}}>
+            <div style={{display:"flex",justifyContent:"space-between"}}><span style={{color:C.textMid}}>Total do contrato</span><span style={{fontWeight:700,color:C.text}}>{fmt(effectiveTotal(selPay))}</span></div>
+            <div style={{display:"flex",justifyContent:"space-between",marginTop:4}}><span style={{color:C.textMid}}>Já pago</span><span style={{fontWeight:700,color:C.success}}>{fmt(paidTotal(selPay))}</span></div>
+            <div style={{display:"flex",justifyContent:"space-between",marginTop:4}}><span style={{color:C.textMid}}>Saldo restante</span><span style={{fontWeight:700,color:C.warning}}>{fmt(effectiveTotal(selPay)-paidTotal(selPay))}</span></div>
+          </div>
+          <Field label="Valor recebido (R$)" type="number" value={payForm.value} onChange={v=>setPayForm(f=>({...f,value:v}))} placeholder="0,00"/>
+          <Field label="Data do pagamento" type="date" value={payForm.date} onChange={v=>setPayForm(f=>({...f,date:v}))}/>
+          <Field label="Descrição (ex: Sinal 50%, Parcela 2)" value={payForm.note} onChange={v=>setPayForm(f=>({...f,note:v}))} placeholder="Ex: Sinal 50%"/>
+          <Btn full onClick={()=>addPayment(selPay.id)}>Confirmar Parcela</Btn>
+        </Sheet>
+      )}
+
+      {/* sheet custo */}
+      {selCost&&(
+        <Sheet title={`Adicionar Custo — ${selCost.name}`} onClose={()=>setSelCost(null)}>
+          <Sel label="Categoria" value={costForm.cat} onChange={v=>setCostForm(f=>({...f,cat:v}))} options={COST_CATS}/>
+          <Field label="Descrição" value={costForm.desc} onChange={v=>setCostForm(f=>({...f,desc:v}))} placeholder="Ex: Haras 40km"/>
+          <Field label="Valor (R$)" type="number" value={costForm.value} onChange={v=>setCostForm(f=>({...f,value:v}))} placeholder="0,00"/>
+          <Btn full onClick={()=>addCost(selCost.id)}>Adicionar Custo</Btn>
+        </Sheet>
+      )}
+    </div>
+  );
+};
+
+/* ══════════ FINANCEIRO ══════════ */
+const Financeiro = ({clients}) => {
+  const allMonths=useMemo(()=>{const s=new Set();clients.forEach(c=>{if(c.sessionDate)s.add(c.sessionDate.slice(0,7));});return[...s].sort().reverse();},[clients]);
+  const [selMonth,setSelMonth]=useState("todos");
+  const [selType,setSelType]=useState("todos");
+
+  const filtered=useMemo(()=>clients.filter(c=>{
+    const mOk=selMonth==="todos"||c.sessionDate?.slice(0,7)===selMonth;
+    const tOk=selType==="todos"||c.sessionType===selType;
+    return mOk&&tOk;
+  }),[clients,selMonth,selType]);
+
+  const totR=filtered.reduce((s,c)=>s+paidTotal(c),0);
+  const totCosts=filtered.reduce((s,c)=>s+costsTotal(c),0);
+  const totEff=filtered.reduce((s,c)=>s+effectiveTotal(c),0);
+  const totLucro=totR-totCosts;
+  const totPend=totEff-totR;
+
+  const byType=useMemo(()=>{
+    const m={};
+    filtered.forEach(c=>{const t=c.sessionType||"Outro";if(!m[t])m[t]={receita:0,custos:0,count:0};m[t].receita+=paidTotal(c);m[t].custos+=costsTotal(c);m[t].count++;});
+    return Object.entries(m).map(([type,d])=>({type,...d,lucro:d.receita-d.custos})).sort((a,b)=>b.receita-a.receita);
+  },[filtered]);
+
+  const byMonth=useMemo(()=>{
+    const m={};
+    clients.forEach(c=>{const mo=c.sessionDate?.slice(0,7);if(!mo)return;if(!m[mo])m[mo]={receita:0,custos:0,count:0};m[mo].receita+=paidTotal(c);m[mo].custos+=costsTotal(c);m[mo].count++;});
+    return Object.entries(m).map(([mo,d])=>({mo,...d,lucro:d.receita-d.custos})).sort((a,b)=>a.mo.localeCompare(b.mo));
+  },[clients]);
+
+  const byCostCat=useMemo(()=>{const m={};filtered.forEach(c=>(c.costs||[]).forEach(x=>{m[x.cat]=(m[x.cat]||0)+x.value;}));return Object.entries(m).sort(([,a],[,b])=>b-a);},[filtered]);
+
+  const maxR=Math.max(...byType.map(r=>r.receita),1);
+  const maxMR=Math.max(...byMonth.map(r=>r.receita),1);
+  const fmtMo=mo=>{const[y,m]=mo.split("-");return`${MONTHS_PT[parseInt(m)-1]} ${y}`;};
+
+  return (
+    <div style={{paddingBottom:84}}>
+      <PageHeader title="Análise Financeira" sub="Receitas, custos e lucro"/>
+      <div style={{padding:"12px 16px 4px"}}>
+        <div style={{marginBottom:10}}>
+          <div style={{fontSize:10,fontWeight:700,color:C.textMid,letterSpacing:.8,textTransform:"uppercase",marginBottom:6}}>Período</div>
+          <div style={{display:"flex",gap:8,overflowX:"auto",scrollbarWidth:"none",paddingBottom:2}}>
+            {["todos",...allMonths].map(m=>(
+              <button key={m} onClick={()=>setSelMonth(m)} style={{flexShrink:0,padding:"6px 14px",borderRadius:20,border:`1.5px solid ${selMonth===m?C.bronze:C.beigeM}`,background:selMonth===m?C.bronze:C.white,color:selMonth===m?C.white:C.textMid,fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>{m==="todos"?"Todos":fmtMo(m)}</button>
+            ))}
+          </div>
+        </div>
+        <div style={{marginBottom:10}}>
+          <div style={{fontSize:10,fontWeight:700,color:C.textMid,letterSpacing:.8,textTransform:"uppercase",marginBottom:6}}>Tipo de Ensaio</div>
+          <div style={{display:"flex",gap:8,overflowX:"auto",scrollbarWidth:"none",paddingBottom:2}}>
+            {["todos",...SESSION_TYPES].map(t=>(
+              <button key={t} onClick={()=>setSelType(t)} style={{flexShrink:0,padding:"6px 14px",borderRadius:20,border:`1.5px solid ${selType===t?(TYPE_COLORS[t]||C.bronze):C.beigeM}`,background:selType===t?(TYPE_COLORS[t]||C.bronze):C.white,color:selType===t?C.white:C.textMid,fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>{t==="todos"?"Todos":t}</button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div style={{padding:"10px 16px",display:"flex",flexDirection:"column",gap:14}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          {[["Receita",fmt(totR),C.success],["Custos",fmt(totCosts),C.danger],["Lucro Líq.",fmt(totLucro),totLucro>=0?C.success:C.danger],["A Receber",fmt(totPend),C.warning]].map(([l,v,col])=>(
+            <div key={l} style={{background:C.white,borderRadius:14,padding:"14px 16px",boxShadow:"0 1px 8px rgba(60,30,10,.07)"}}>
+              <div style={{fontSize:9,fontWeight:700,color:C.textLight,letterSpacing:.8,textTransform:"uppercase",marginBottom:4}}>{l}</div>
+              <div style={{fontFamily:"Georgia,serif",fontSize:18,fontWeight:700,color:col}}>{v}</div>
+            </div>
+          ))}
+        </div>
+
+        {byType.length>0&&(
+          <div style={{background:C.white,borderRadius:16,padding:"16px",boxShadow:"0 1px 8px rgba(60,30,10,.07)"}}>
+            <div style={{fontSize:11,fontWeight:700,color:C.textMid,letterSpacing:.7,textTransform:"uppercase",marginBottom:14}}>Receita por Tipo de Ensaio</div>
+            {byType.map(row=>{
+              const col=TYPE_COLORS[row.type]||C.bronze;
+              return (
+                <div key={row.type} style={{marginBottom:14}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:5}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <div style={{width:10,height:10,borderRadius:"50%",background:col,flexShrink:0}}/>
+                      <div><div style={{fontSize:13,fontWeight:700,color:C.text}}>{row.type}</div><div style={{fontSize:10,color:C.textMid}}>{row.count} sessão(ões) · custos {fmt(row.custos)}</div></div>
+                    </div>
+                    <div style={{textAlign:"right"}}><div style={{fontFamily:"Georgia,serif",fontSize:15,fontWeight:700,color:col}}>{fmt(row.receita)}</div><div style={{fontSize:10,color:row.lucro>=0?C.success:C.danger,fontWeight:600}}>lucro {fmt(row.lucro)}</div></div>
+                  </div>
+                  <div style={{background:C.beige,borderRadius:6,height:8,overflow:"hidden"}}><div style={{width:`${Math.round(row.receita/maxR*100)}%`,height:"100%",background:col,borderRadius:6,transition:"width .4s"}}/></div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {byMonth.length>0&&(
+          <div style={{background:C.white,borderRadius:16,padding:"16px",boxShadow:"0 1px 8px rgba(60,30,10,.07)"}}>
+            <div style={{fontSize:11,fontWeight:700,color:C.textMid,letterSpacing:.7,textTransform:"uppercase",marginBottom:14}}>Evolução Mensal</div>
+            <div style={{display:"flex",alignItems:"flex-end",gap:6,height:80,marginBottom:8}}>
+              {byMonth.map(row=>{
+                const hR=Math.round(row.receita/maxMR*76);
+                const hC=Math.round(row.custos/maxMR*76);
+                const [,m]=row.mo.split("-");
+                return <div key={row.mo} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
+                  <div style={{width:"100%",display:"flex",gap:2,alignItems:"flex-end",height:76}}>
+                    <div style={{flex:1,height:hR,background:C.bronze,borderRadius:"3px 3px 0 0",minHeight:3}}/>
+                    <div style={{flex:1,height:hC,background:`${C.danger}88`,borderRadius:"3px 3px 0 0",minHeight:2}}/>
+                  </div>
+                  <div style={{fontSize:8,color:C.textLight,textAlign:"center"}}>{MONTHS_PT[parseInt(m)-1]}</div>
+                </div>;
+              })}
+            </div>
+            <div style={{display:"flex",gap:14,marginBottom:10}}>
+              <div style={{display:"flex",alignItems:"center",gap:5}}><div style={{width:10,height:10,borderRadius:2,background:C.bronze}}/><span style={{fontSize:10,color:C.textMid}}>Receita</span></div>
+              <div style={{display:"flex",alignItems:"center",gap:5}}><div style={{width:10,height:10,borderRadius:2,background:`${C.danger}88`}}/><span style={{fontSize:10,color:C.textMid}}>Custos</span></div>
+            </div>
+            {byMonth.map(row=>(
+              <div key={row.mo} style={{display:"flex",justifyContent:"space-between",padding:"8px 12px",background:C.cream,borderRadius:10,marginBottom:6}}>
+                <div style={{fontSize:12,fontWeight:700,color:C.text}}>{fmtMo(row.mo)}</div>
+                <div style={{display:"flex",gap:12}}>
+                  <span style={{fontSize:12,color:C.success,fontWeight:600}}>{fmt(row.receita)}</span>
+                  <span style={{fontSize:12,color:C.danger,fontWeight:600}}>−{fmt(row.custos)}</span>
+                  <span style={{fontSize:12,color:row.lucro>=0?C.bronze:C.danger,fontWeight:700}}>{fmt(row.lucro)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {byCostCat.length>0&&(
+          <div style={{background:C.white,borderRadius:16,padding:"16px",boxShadow:"0 1px 8px rgba(60,30,10,.07)"}}>
+            <div style={{fontSize:11,fontWeight:700,color:C.textMid,letterSpacing:.7,textTransform:"uppercase",marginBottom:12}}>Gastos por Categoria</div>
+            {byCostCat.map(([cat,val])=>(
+              <div key={cat} style={{display:"flex",alignItems:"center",gap:12,padding:"8px 12px",background:C.cream,borderRadius:10,marginBottom:6}}>
+                <div style={{width:8,height:8,borderRadius:"50%",background:C.danger,flexShrink:0}}/>
+                <span style={{flex:1,fontSize:13,color:C.text,fontWeight:600}}>{cat}</span>
+                <span style={{fontSize:13,fontWeight:700,color:C.danger}}>{fmt(val)}</span>
+                <span style={{fontSize:10,color:C.textLight}}>{totCosts?Math.round(val/totCosts*100):0}%</span>
+              </div>
+            ))}
+            <div style={{display:"flex",justifyContent:"space-between",padding:"10px 12px",borderTop:`1px solid ${C.beigeM}`,marginTop:4}}>
+              <span style={{fontSize:12,fontWeight:700,color:C.textMid}}>Total</span>
+              <span style={{fontSize:14,fontWeight:700,color:C.danger}}>{fmt(totCosts)}</span>
+            </div>
+          </div>
+        )}
+
+        {filtered.length>0&&(
+          <div style={{background:C.white,borderRadius:16,padding:"16px",boxShadow:"0 1px 8px rgba(60,30,10,.07)"}}>
+            <div style={{fontSize:11,fontWeight:700,color:C.textMid,letterSpacing:.7,textTransform:"uppercase",marginBottom:12}}>Ranking · Lucro Líquido</div>
+            {[...filtered].map(c=>({...c,lucroLiq:paidTotal(c)-costsTotal(c)})).sort((a,b)=>b.lucroLiq-a.lucroLiq).map((c,i)=>(
+              <div key={c.id} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 0",borderBottom:`1px solid ${C.beige}`}}>
+                <div style={{width:20,textAlign:"center",fontFamily:"Georgia,serif",fontSize:13,fontWeight:700,color:i<3?C.bronze:C.textLight}}>#{i+1}</div>
+                <Avatar initials={c.avatar} size={32}/>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:12,fontWeight:700,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</div>
+                  <div style={{fontSize:10,color:C.textMid}}>{c.city} · {c.sessionType}</div>
+                </div>
+                <div style={{textAlign:"right"}}>
+                  <div style={{fontSize:13,fontWeight:700,color:c.lucroLiq>=0?C.success:C.danger}}>{fmt(c.lucroLiq)}</div>
+                  <div style={{fontSize:9,color:C.textLight}}>{(c.payments||[]).length} parcela(s)</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+/* ══════════ ROOT ══════════ */
+function App() {
+  const [clients,setClientsRaw]=useState(()=>load(SK_C,SEED_C));
+  const [agenda,setAgendaRaw]=useState(()=>load(SK_A,SEED_A));
+  const [page,setPage]=useState("home");
+
+  const setClients=useCallback(u=>{setClientsRaw(p=>{const n=typeof u==="function"?u(p):u;save(SK_C,n);return n;});},[]); 
+  const setAgenda=useCallback(u=>{setAgendaRaw(p=>{const n=typeof u==="function"?u(p):u;save(SK_A,n);return n;});},[]); 
+
+  return (
+    <div style={{maxWidth:430,margin:"0 auto",minHeight:"100vh",background:C.cream,position:"relative",fontFamily:"system-ui,-apple-system,'Segoe UI',sans-serif",color:C.text}}>
+      <div style={{minHeight:"100vh",overflowY:"auto",overflowX:"hidden"}}>
+        {page==="home"       &&<Home      clients={clients} agenda={agenda}/>}
+        {page==="clients"    &&<Clients   clients={clients} setClients={setClients}/>}
+        {page==="agenda"     &&<Agenda    agenda={agenda}   setAgenda={setAgenda} clients={clients}/>}
+        {page==="photos"     &&<Photos    clients={clients} setClients={setClients}/>}
+        {page==="payments"   &&<Payments  clients={clients} setClients={setClients}/>}
+        {page==="financeiro" &&<Financeiro clients={clients}/>}
+      </div>
+      <BottomNav page={page} setPage={setPage}/>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+
+<script>
+// Service Worker para cache offline
+if('serviceWorker' in navigator){
+  const sw=`const C='gp-v3';self.addEventListener('install',()=>self.skipWaiting());self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));self.addEventListener('fetch',e=>{if(e.request.url.includes('cdnjs')){e.respondWith(caches.open(C).then(c=>c.match(e.request).then(h=>h||fetch(e.request).then(r=>{c.put(e.request,r.clone());return r;}))));}});`;
+  const b=new Blob([sw],{type:'application/javascript'});
+  navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});
+}
+// Banner iOS
+window.addEventListener('load',()=>{
+  const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
+  const standalone=window.navigator.standalone||window.matchMedia('(display-mode:standalone)').matches;
+  if(isIOS&&!standalone&&!localStorage.getItem('gp_ios_ok')){
+    const d=document.createElement('div');
+    d.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);width:calc(100%-32px);max-width:390px;background:#7A5535;color:#fff;border-radius:16px;padding:14px 16px;font-size:13px;font-family:system-ui;z-index:9999;box-shadow:0 8px 30px rgba(0,0,0,.3);display:flex;gap:12px;align-items:center';
+    d.innerHTML='<div style="font-size:24px">📲</div><div style="flex:1"><b>Instalar no iPhone</b><br>Safari → Compartilhar → <b>Adicionar à Tela de Início</b></div><button onclick="this.parentNode.remove();localStorage.setItem(\'gp_ios_ok\',1)" style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:8px;padding:6px 10px;cursor:pointer;font-weight:700">✕</button>';
+    document.body.appendChild(d);
+    setTimeout(()=>d.remove(),9000);
+  }
+});
+</script>
+</body>
+</html>
